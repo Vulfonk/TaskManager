@@ -1,9 +1,9 @@
-﻿namespace TaskManager.Models
+﻿namespace TaskManager.Data.Models
 {
     public class Priority
     {
         public int Id { get; set; }
         public int Level { get; set; }
-        public ICollection<ToDoItem> ToDoItem { get; set; }
+        public ICollection<ToDoItem> ToDoItems { get; set; }
     }
 }
