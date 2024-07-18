@@ -1,8 +1,7 @@
-﻿// Controllers/ToDoItemsController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Data;
 using TaskManager.Data.Models;
+using TaskManager.Data;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -17,16 +16,37 @@ public class ToDoItemsController : ControllerBase
 
     // GET: api/ToDoItems
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ToDoItem>>> GetToDoItems()
+    public async Task<ActionResult<IEnumerable<ToDoItemDto>>> GetToDoItems()
     {
-        return await _context.ToDoItems.Include(t => t.Priority).Include(t => t.User).ToListAsync();
+        return await _context.ToDoItems
+            .Select(item => new ToDoItemDto
+            {
+                Id = item.Id,
+                Title = item.Title,
+                Description = item.Description,
+                IsCompleted = item.IsCompleted,
+                DueDate = item.DueDate,
+                PriorityId = item.PriorityId,
+                UserId = item.UserId
+            }).ToListAsync();
     }
 
     // GET: api/ToDoItems/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<ToDoItem>> GetToDoItem(int id)
+    public async Task<ActionResult<ToDoItemDto>> GetToDoItem(int id)
     {
-        var toDoItem = await _context.ToDoItems.Include(t => t.Priority).Include(t => t.User).FirstOrDefaultAsync(t => t.Id == id);
+        var toDoItem = await _context.ToDoItems
+            .Select(item => new ToDoItemDto
+            {
+                Id = item.Id,
+                Title = item.Title,
+                Description = item.Description,
+                IsCompleted = item.IsCompleted,
+                DueDate = item.DueDate,
+                PriorityId = item.PriorityId,
+                UserId = item.UserId
+            })
+            .FirstOrDefaultAsync(item => item.Id == id);
 
         if (toDoItem == null)
         {
@@ -38,12 +58,25 @@ public class ToDoItemsController : ControllerBase
 
     // PUT: api/ToDoItems/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutToDoItem(int id, ToDoItem toDoItem)
+    public async Task<IActionResult> PutToDoItem(int id, ToDoItemDto toDoItemDto)
     {
-        if (id != toDoItem.Id)
+        if (id != toDoItemDto.Id)
         {
             return BadRequest();
         }
+
+        var toDoItem = await _context.ToDoItems.FindAsync(id);
+        if (toDoItem == null)
+        {
+            return NotFound();
+        }
+
+        toDoItem.Title = toDoItemDto.Title;
+        toDoItem.Description = toDoItemDto.Description;
+        toDoItem.IsCompleted = toDoItemDto.IsCompleted;
+        toDoItem.DueDate = toDoItemDto.DueDate;
+        toDoItem.PriorityId = toDoItemDto.PriorityId;
+        toDoItem.UserId = toDoItemDto.UserId;
 
         _context.Entry(toDoItem).State = EntityState.Modified;
 
@@ -68,12 +101,24 @@ public class ToDoItemsController : ControllerBase
 
     // POST: api/ToDoItems
     [HttpPost]
-    public async Task<ActionResult<ToDoItem>> PostToDoItem(ToDoItem toDoItem)
+    public async Task<ActionResult<ToDoItemDto>> PostToDoItem(ToDoItemDto toDoItemDto)
     {
+        var toDoItem = new ToDoItem
+        {
+            Title = toDoItemDto.Title,
+            Description = toDoItemDto.Description,
+            IsCompleted = toDoItemDto.IsCompleted,
+            DueDate = toDoItemDto.DueDate,
+            PriorityId = toDoItemDto.PriorityId,
+            UserId = toDoItemDto.UserId
+        };
+
         _context.ToDoItems.Add(toDoItem);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction("GetToDoItem", new { id = toDoItem.Id }, toDoItem);
+        toDoItemDto.Id = toDoItem.Id;
+
+        return CreatedAtAction("GetToDoItem", new { id = toDoItemDto.Id }, toDoItemDto);
     }
 
     // DELETE: api/ToDoItems/5
@@ -90,24 +135,6 @@ public class ToDoItemsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
-    }
-
-    [HttpGet("filter")]
-    public async Task<ActionResult<IEnumerable<ToDoItem>>> GetFilteredToDoItems([FromQuery] bool? isCompleted, [FromQuery] int? priorityLevel)
-    {
-        var query = _context.ToDoItems.Include(t => t.Priority).Include(t => t.User).AsQueryable();
-
-        if (isCompleted.HasValue)
-        {
-            query = query.Where(t => t.IsCompleted == isCompleted.Value);
-        }
-
-        if (priorityLevel.HasValue)
-        {
-            query = query.Where(t => t.Priority.Level == priorityLevel.Value);
-        }
-
-        return await query.ToListAsync();
     }
 
     private bool ToDoItemExists(int id)
