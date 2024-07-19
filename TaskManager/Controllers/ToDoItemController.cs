@@ -31,6 +31,27 @@ public class ToDoItemsController : ControllerBase
             }).ToListAsync();
     }
 
+    // GET api/ToDoItems/filter
+    [HttpGet("filter")]
+    public async Task<ActionResult<IEnumerable<ToDoItemDto>>> Get([FromQuery] bool? status = null, [FromQuery] int? priorityId = null)
+    {
+        return await _context.ToDoItems
+            .Where(t => 
+            (status == null) || (t.IsCompleted == status) &&
+            (priorityId == null) || (t.PriorityId == priorityId)
+            )
+            .Select(item => new ToDoItemDto
+            {
+                Id = item.Id,
+                Title = item.Title,
+                Description = item.Description,
+                IsCompleted = item.IsCompleted,
+                DueDate = item.DueDate,
+                PriorityId = item.PriorityId,
+                UserId = item.UserId
+            }).ToListAsync();
+    }
+
     // GET: api/ToDoItems/5
     [HttpGet("{id}")]
     public async Task<ActionResult<ToDoItemDto>> GetToDoItem(int id)
@@ -97,6 +118,37 @@ public class ToDoItemsController : ControllerBase
         }
 
         return NoContent();
+    }
+
+    // PUT api/tasks/5/assign/{userId}
+    [HttpPut("{id}/assign/{userId}")]
+    public async Task<ActionResult> AssignTask(int id, int userId)
+    {
+        var task = _context.ToDoItems.FirstOrDefault(t => t.Id == id);
+        if (task == null) 
+            return NotFound();
+
+        task.UserId = userId;
+        _context.Entry(task).State = EntityState.Modified;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ToDoItemExists(id))
+            {
+                return NotFound();
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        return NoContent();
+
     }
 
     // POST: api/ToDoItems
